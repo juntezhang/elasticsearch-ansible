@@ -1,0 +1,43 @@
+---
+es_cluster_name: acme-es1
+es_cluster_type: distributed
+es_index_refresh: 10s
+es_index_store: mmapfs
+es_nodes:
+  - es-data1.example.net
+  - es-data2.example.net
+  - es-data3.example.net
+es_masters:
+  - es-master1.example.net
+  - es-master2.example.net
+  - es-master3.example.net
+es_indexers:
+  - es-data1.example.net
+  - es-data2.example.net
+  - es-data3.example.net
+es_recover_after: 5m
+es_num_shards: 5
+es_num_replicas: 2
+es_auto_create_index:
+  - +test*
+  - +_*
+  - +.*
+  - -*
+es_path_data:
+  - /data/a/es/
+  - /data/b/es/
+  - /data/c/es/
+  - /data/d/es/
+es_marvel_role: exporter
+es_marvel_servers:
+  - marvel.example.net
+es_marvel_interval: 5s
+es_node_role: standard
+es_node_type: dedicated
+es_racks:
+  - rack-0101
+  - rack-0102
+  - rack-0201
+  - rack-0202
+es_index_templates:
+  - testing

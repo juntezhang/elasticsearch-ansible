@@ -1,0 +1,11 @@
+---
+es_cluster_name: gii-es-mon
+es_cluster_type: standalone
+es_num_shards: 1
+es_num_replicas: 0
+es_marvel_role: agent
+es_path_data:
+  - /data/a/es/
+  - /data/b/es/
+  - /data/c/es/
+  - /data/d/es/
