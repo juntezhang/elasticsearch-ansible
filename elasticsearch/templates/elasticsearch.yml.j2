@@ -1,0 +1,158 @@
+################################### Cluster ###################################
+
+cluster.name: {{es_cluster_name}}
+
+#################################### Node #####################################
+
+node.name: "{{es_node_name}}"
+
+{% if es_node_role == 'master' %}
+node.master: true
+node.data: false
+{% elif es_node_role == 'data' %}
+node.master: false
+node.data: true
+{% elif es_node_role == 'client' %}
+node.master: false
+node.data: false
+{% else %}
+node.master: true
+node.data: true
+{% endif %}
+
+{% if es_node_rack is defined %}
+node.rack: {{es_node_rack}}
+{% endif %}
+
+# By default, multiple nodes are allowed to start from the same installation location
+# to disable it, set the following:
+# node.max_local_storage_nodes: 1
+
+#################################### Index ####################################
+
+{% if es_cluster_type == 'distributed' %}
+{% if es_num_shards is defined %}
+index.number_of_shards: {{es_num_shards}}
+{% else %}
+index.number_of_shards: {{es_indexers|length}}
+{% endif %}
+index.number_of_replicas: {{es_num_replicas}}
+{% else %}
+index.number_of_shards: 1
+index.number_of_replicas: 0
+{% endif %}
+{% if es_marvel_role == 'agent' %}
+action.auto_create_index: .marvel-*,logstash-*
+{% elif es_auto_create_index is defined %}
+action.auto_create_index: {{es_auto_create_index|join(',')}}
+{% endif %}
+{% if es_index_refresh is defined %}
+index.refresh_interval: {{es_index_refresh}}
+{% else %}
+#index.refresh_interval: 1s
+{% endif %}
+{% if es_index_store is defined %}
+index.store.type: {{es_index_store}}
+{% else %}
+#index.store.type: mmapfs
+{% endif %}
+index.merge.scheduler.max_thread_count: 1
+action.destructive_requires_name: true
+
+#################################### Paths ####################################
+
+#path.conf: es_path_conf
+path.data: {{es_path_data|join(',')}}
+#path.work: es_path_work
+#path.logs: es_path_logs
+#path.plugins: es_path_plugins
+
+#################################### Plugin ###################################
+
+{% if es_marvel_role == 'agent' %}
+plugin.mandatory: marvel
+{% endif %}
+
+################################### Memory ####################################
+
+bootstrap.mlockall: true
+
+############################## Network And HTTP ###############################
+
+{% if es_tcp_compress is defined %}
+transport.tcp.compress: {{es_tcp_compress}}
+{% else %}
+# transport.tcp.compress: false
+{% endif %}
+{% if es_http_compress is defined %}
+http.compression: {{es_http_compress}}
+{% else %}
+# http.compression: false
+{% endif %}
+# http.max_content_length: 100mb
+
+################################### Gateway ###################################
+
+# <http://elasticsearch.org/guide/en/elasticsearch/reference/current/modules-gateway.html>.
+# gateway.type: local
+
+{% if es_cluster_type == 'distributed' %}
+gateway.recover_after_nodes: {{(0.50*(es_masters|length))|round(0,'ceil')|int}}
+gateway.expected_nodes: {{es_masters|length}}
+{% if es_recover_after is defined %}
+gateway.recover_after_time: {{es_recover_after}}
+{% else %}
+gateway.recover_after_time: 5m
+{% endif %}
+{% endif %}
+
+############################# Recovery Throttling #############################
+
+# cluster.routing.allocation.node_initial_primaries_recoveries: 4
+# cluster.routing.allocation.node_concurrent_recoveries: 2
+{% if es_node_rack is defined %}
+cluster.routing.allocation.awareness.force.rack.values: {{es_racks|join(',')}}
+cluster.routing.allocation.awareness.attributes: rack
+{% endif %}
+{% if es_index_buf_size is defined %}
+indices.memory.index_buffer_size: {{es_index_buf_size}}
+{% if '%' in es_min_index_buf_size %}
+{% if es_min_index_buf_size is defined %}
+indices.memory.min_index_buffer_size: {{es_min_index_buf_size}}
+{% endif %}
+{% if es_max_index_buf_size is defined %}
+indices.memory.max_index_buffer_size: {{es_max_index_buf_size}}
+{% endif %}
+{% endif %}
+{% endif %}
+# indices.recovery.max_bytes_per_sec: 20mb
+# indices.recovery.concurrent_streams: 5
+
+################################## Discovery ##################################
+
+{% if es_cluster_type == 'distributed' %}
+discovery.zen.minimum_master_nodes: {{(es_masters|length)//2+1|round|int}}
+{% if es_zen_ping_timeout is defined %}
+discovery.zen.ping.timeout: {{es_zen_ping_timeout}}s
+{% else %}
+# discovery.zen.ping.timeout: 3s
+{% endif %}
+discovery.zen.ping.unicast.hosts: [ "{{es_masters|join('", "')}}" ]
+{% endif %}
+discovery.zen.ping.multicast.enabled: false
+################################## Slow Log ##################################
+
+################################## GC Logging ################################
+
+################################## Marvel ####################################
+{% if es_marvel_role == 'agent' %}
+marvel.agent.enabled: false
+{% elif es_marvel_role == 'exporter' %}
+marvel.agent.enabled: true
+marvel.agent.exporter.es.hosts: [ "{{es_marvel_servers|join(':9200", "')}}:9200" ]
+{% if es_marvel_shard_stats is defined %}
+marvel.agent.shard_stats.enabled: {{es_marvel_shard_stats}}
+{% endif %}
+{% elif es_marvel_role == 'standalone' %}
+marvel.agent.exporter.es.hosts: [ "{{ es_node_name }}:9200" ]
+{% endif %}

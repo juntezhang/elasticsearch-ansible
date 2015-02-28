@@ -1,0 +1,37 @@
+---
+- name: install official ES RPM repo
+  copy: src=elasticsearch.repo dest=/etc/yum.repos.d/elasticsearch.repo owner=root group=root mode=444
+- name: install Oracle JDK
+  yum: name=jdk disable_gpg_check=yes
+- name: install elasticsearch
+  yum: enablerepo=elasticsearch-1.4 name=elasticsearch{{es_version|default('-1.4.2-1',true)}}
+- name: create elasticsearch data directories
+  file: path={{item}} state=directory owner=elasticsearch mode=775
+  with_items: es_path_data
+  when: es_path_data is defined
+#- name: install JSON logging dependencies
+#  yum: name=logging-deps-es
+- name: create elasticsearch template directory
+  file: path=/etc/elasticsearch/templates state=directory owner=elasticsearch mode=775
+- name: install marvel plugin
+  command: /usr/share/elasticsearch/bin/plugin -i elasticsearch/marvel/1.3.0 creates=/usr/share/elasticsearch/plugins/marvel/
+  when: es_marvel_role == 'agent' or es_marvel_role == 'exporter' or es_marvel_role == 'standalone'
+- name: install node-specific plugins
+  command: /usr/share/elasticsearch/bin/plugin -i elasticsearch/{{item['release']}} creates=/usr/share/elasticsearch/plugins/{{item['dest']}}/
+  with_items: es_plugins
+  when: es_plugins is defined
+- name: template elasticsearch config files
+  template: src={{item}}.j2 dest=/etc/elasticsearch/{{item}}
+  with_items:
+    - elasticsearch.yml
+#    - logging.yml
+- name: template index templates
+  template: src={{item}}.json.j2 dest=/etc/elasticsearch/templates/{{item}}.json owner=elasticsearch mode=444
+  with_items: es_index_templates
+  when: es_index_templates is defined
+- name: template elasticsearch defaults
+  template: src=elasticsearch.defaults.j2 dest=/etc/sysconfig/elasticsearch
+- name: raise elasticsearch limits
+  copy: src=10-elasticsearch.conf dest=/etc/security/limits.d/10-elasticsearch.conf owner=root group=root mode=444
+- name: start ES on boot
+  service: name=elasticsearch state=started

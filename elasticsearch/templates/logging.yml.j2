@@ -1,0 +1,60 @@
+# See:
+#   - https://github.com/logstash/log4j-jsonevent-layout
+#   - http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#logging
+#   - http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/_logging.html
+
+es.logger.level: INFO
+rootLogger: ${es.logger.level}, console, json
+logger:
+  # log action execution errors for easier debugging
+  action: DEBUG
+  # reduce the logging for aws, too much is logged under the default INFO
+  com.amazonaws: WARN
+
+  # gateway
+  #gateway: DEBUG
+  #index.gateway: DEBUG
+
+  # peer shard recovery
+  #indices.recovery: DEBUG
+
+  # discovery
+  #discovery: TRACE
+
+  index.search.slowlog: TRACE, slow_search_json
+  index.indexing.slowlog: TRACE, slow_indexing_json
+
+additivity:
+  index.search.slowlog: false
+  index.indexing.slowlog: false
+
+appender:
+  console:
+    type: console
+    layout:
+      type: consolePattern
+      conversionPattern: "[%d{ISO8601}][%-5p][%-25c] %m%n"
+
+  slow_search_json:
+    type: rollingFile
+    file: ${path.logs}/${cluster.name}.slow_search.log.json
+    maxFileSize: 5MB
+    maxBackupIndex: 1
+    layout:
+      type: net.logstash.log4j.JSONEventLayoutV1
+
+  slow_indexing_json:
+    type: rollingFile
+    file: ${path.logs}/${cluster.name}.slow_indexing.log.json
+    maxFileSize: 5MB
+    maxBackupIndex: 1
+    layout:
+      type: net.logstash.log4j.JSONEventLayoutV1
+
+  json:
+    type: rollingFile
+    file: ${path.logs}/${cluster.name}.cluster.log.json
+    maxFileSize: 5MB
+    maxBackupIndex: 1
+    layout:
+      type: net.logstash.log4j.JSONEventLayoutV1
